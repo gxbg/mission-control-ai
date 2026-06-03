@@ -1,4 +1,11 @@
-"""Regras de alerta e decisão para a telemetria do EnviroSat.
+"""escrever_alertas.py - atualiza src/alertas.py (Fase 2, passo 2).
+
+Rode na pasta do projeto:  py escrever_alertas.py
+Ele sobrescreve o esqueleto vazio de src/alertas.py pela versao real.
+"""
+from pathlib import Path
+
+CONTEUDO = r'''"""Regras de alerta e decisão para a telemetria do EnviroSat.
 
 Aqui mora a lógica de decisão EM PYTHON (não no prompt da IA): cada parâmetro
 é comparado com seus limites, recebe um nível (ok / atenção / crítico) e, em
@@ -145,3 +152,18 @@ if __name__ == "__main__":
             print("Ações automatizadas disparadas:")
             for acao in resultado["acoes"]:
                 print(f"  -> {acao}")
+'''
+
+
+def main():
+    destino = Path('src/alertas.py')
+    if not destino.parent.exists():
+        print('ERRO: rode este script DENTRO da pasta do projeto (onde fica a pasta src).')
+        return
+    destino.write_text(CONTEUDO, encoding='utf-8')
+    print('OK: src/alertas.py atualizado.')
+    print('Teste agora com:  py src/alertas.py')
+
+
+if __name__ == '__main__':
+    main()

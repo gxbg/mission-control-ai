@@ -1,4 +1,11 @@
-"""Geração da telemetria simulada do satélite EnviroSat.
+"""escrever_telemetria.py - atualiza src/telemetria.py (Fase 2, passo 1).
+
+Rode na pasta do projeto:  py escrever_telemetria.py
+Ele sobrescreve o esqueleto vazio de src/telemetria.py pela versao real.
+"""
+from pathlib import Path
+
+CONTEUDO = r'''"""Geração da telemetria simulada do satélite EnviroSat.
 
 Simula, a cada ciclo, a leitura dos parâmetros monitorados de um satélite
 de observação ambiental (estilo Amazônia-1 / Landsat). Os valores variam
@@ -66,3 +73,18 @@ if __name__ == "__main__":
     print("\n=== Cenário CRÍTICO (forçado) ===")
     for chave, valor in coletar("critico").items():
         print(f"  {chave}: {valor}")
+'''
+
+
+def main():
+    destino = Path('src/telemetria.py')
+    if not destino.parent.exists():
+        print('ERRO: rode este script DENTRO da pasta do projeto (onde fica a pasta src).')
+        return
+    destino.write_text(CONTEUDO, encoding='utf-8')
+    print('OK: src/telemetria.py atualizado.')
+    print('Teste agora com:  py src/telemetria.py')
+
+
+if __name__ == '__main__':
+    main()
