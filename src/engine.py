@@ -5,6 +5,8 @@ from pathlib import Path
 from ollama import Client
 from dotenv import load_dotenv
 
+from src import telemetria, alertas
+
 load_dotenv()
 
 # Identificação da trilha escolhida pelo grupo.
@@ -16,7 +18,6 @@ client = Client(
     headers={"Authorization": "Bearer " + os.environ.get("OLLAMA_API_KEY", "")},
 )
 
-# Aviso de sanidade ao iniciar: confirma se a chave foi carregada do .env.
 _api = os.environ.get("OLLAMA_API_KEY")
 if not _api:
     print("⚠ OLLAMA_API_KEY não encontrada — verifique o arquivo .env.")
@@ -25,9 +26,8 @@ if not _api:
 def llm(prompt, system=None, max_tokens=800, temperature=0.3):
     """Envia o prompt ao gpt-oss:120b via Ollama Cloud e retorna o texto.
 
-    Este é o ÚNICO ponto de contato do projeto com o modelo.
-    Toda chamada à IA passa por aqui — não reescreva esta função,
-    chame-a de dentro de MissionEngine.analyze().
+    Único ponto de contato do projeto com o modelo. Toda chamada à IA passa
+    por aqui.
     """
     messages = []
     if system:
@@ -52,36 +52,91 @@ def load_system_prompt():
     return "Você é um assistente."  # fallback genérico
 
 
+def _formatar_status(dados, resultado):
+    """Monta um texto legível do estado atual da missão (sem chamar a IA)."""
+    linhas = [f"Trilha: EnviroSat  |  Nível geral: {resultado['nivel_geral'].upper()}", ""]
+    linhas.append("Telemetria atual:")
+    for chave, valor in dados.items():
+        linhas.append(f"  - {chave}: {valor}")
+
+    if resultado["alertas"]:
+        linhas.append("")
+        linhas.append("Alertas:")
+        for a in resultado["alertas"]:
+            linhas.append(f"  - [{a['nivel'].upper()}] {a['rotulo']}: {a['valor']}{a['unidade']}")
+    else:
+        linhas.append("")
+        linhas.append("Alertas: nenhum, todos os parâmetros dentro do normal.")
+
+    if resultado["acoes"]:
+        linhas.append("")
+        linhas.append("Ações automáticas acionadas:")
+        for acao in resultado["acoes"]:
+            linhas.append(f"  - {acao}")
+    return "\n".join(linhas)
+
+
+def _montar_prompt(dados, resultado, pergunta):
+    """Monta o texto enviado à IA, injetando dados + alertas + a pergunta."""
+    linhas = ["TELEMETRIA ATUAL DO SATÉLITE:"]
+    for chave, valor in dados.items():
+        linhas.append(f"  - {chave}: {valor}")
+
+    linhas.append("")
+    linhas.append(f"NÍVEL GERAL (calculado pelo sistema): {resultado['nivel_geral'].upper()}")
+
+    if resultado["alertas"]:
+        linhas.append("ALERTAS DETECTADOS:")
+        for a in resultado["alertas"]:
+            linhas.append(
+                f"  - [{a['nivel'].upper()}] {a['rotulo']}: "
+                f"{a['valor']}{a['unidade']} | impacto: {a['impacto']}"
+            )
+    else:
+        linhas.append("ALERTAS: nenhum, todos os parâmetros dentro do normal.")
+
+    if resultado["acoes"]:
+        linhas.append("AÇÕES AUTOMÁTICAS JÁ ACIONADAS PELO SISTEMA:")
+        for acao in resultado["acoes"]:
+            linhas.append(f"  - {acao}")
+
+    linhas.append("")
+    linhas.append(f"PERGUNTA DO OPERADOR: {pergunta}")
+    return "\n".join(linhas)
+
+
 class MissionEngine:
-    """Motor de análise — os métodos abaixo são completados nas próximas fases."""
+    """Motor de análise da missão — combina telemetria, alertas e IA."""
 
     def __init__(self):
         self.trilha = TRILHA
         self.system_prompt = load_system_prompt()
+        self.cenario = "aleatorio"
+        # Leitura inicial da telemetria ao ligar o sistema.
+        self.dados = telemetria.coletar(self.cenario)
 
     def is_ready(self):
-        # Trocar para True quando analyze() estiver implementado (Fase 4).
-        return False
+        return True
+
+    def novo_ciclo(self, cenario=None):
+        """Gera uma nova leitura de telemetria e devolve o status formatado.
+
+        Se 'cenario' for informado ("normal" | "critico" | "aleatorio"),
+        ele passa a valer para as próximas leituras (útil para a demonstração).
+        """
+        if cenario:
+            self.cenario = cenario
+        self.dados = telemetria.coletar(self.cenario)
+        resultado = alertas.avaliar(self.dados)
+        return _formatar_status(self.dados, resultado)
 
     def status_snapshot(self):
-        """Retorna um texto resumindo o estado atual da telemetria."""
-        # TODO (Fase 4): chamar telemetria.coletar() e formatar de forma legível.
-        return "🛠 status_snapshot() ainda não implementado."
+        """Resumo legível do estado atual (sem IA) — usado pelo comando /status."""
+        resultado = alertas.avaliar(self.dados)
+        return _formatar_status(self.dados, resultado)
 
     def analyze(self, pergunta_usuario):
-        """Analisa a pergunta com base na telemetria + alertas + IA."""
-        # TODO (foco do trabalho — Fases 2 a 4):
-        #   1. Coletar dados via src.telemetria.coletar()
-        #   2. Avaliar alertas via src.alertas.avaliar(dados)
-        #   3. Montar o prompt com dados + alertas + a pergunta do usuário
-        #   4. Chamar llm(prompt, system=self.system_prompt)
-        #   5. Retornar a resposta
-        return (
-            "🛠 Implementação pendente.\n\n"
-            "Olá! A interface CLI está funcionando, mas a lógica\n"
-            "de análise ainda não foi conectada. Falta:\n\n"
-            "  1. Completar src/telemetria.py\n"
-            "  2. Completar src/alertas.py\n"
-            "  3. Escrever o system prompt em prompts/system_prompt.md\n"
-            "  4. Sobrescrever analyze() em src/engine.py"
-        )
+        """Analisa a pergunta com base na telemetria atual + alertas + IA."""
+        resultado = alertas.avaliar(self.dados)
+        prompt = _montar_prompt(self.dados, resultado, pergunta_usuario)
+        return llm(prompt, system=self.system_prompt)

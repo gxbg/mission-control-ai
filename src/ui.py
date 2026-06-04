@@ -5,6 +5,7 @@ import pyfiglet
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.markdown import Markdown
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
 
@@ -27,21 +28,30 @@ def show_banner():
     ))
 
 
-def show_response(text):
-    """Renderiza a resposta da IA em um painel com timestamp."""
+def show_response(text, markdown=False):
+    """Renderiza uma resposta em painel com timestamp.
+
+    Se markdown=True, o texto é interpretado como Markdown (negrito, listas),
+    deixando a análise da IA mais legível.
+    """
     now = datetime.now().strftime("%H:%M")
-    console.print(Panel(text, title="◆ Mission Control",
+    conteudo = Markdown(text) if markdown else text
+    console.print(Panel(conteudo, title="◆ Mission Control",
                         subtitle=now, border_style="#06B6D4"))
 
 
 def show_help():
     """Lista os comandos disponíveis."""
     console.print(Panel(
-        "/help    mostra esta ajuda\n"
-        "/status  resumo do estado atual da telemetria\n"
-        "/about   sobre o projeto e a trilha\n"
-        "/clear   limpa a tela\n"
-        "/exit    encerra a sessão",
+        "/help     mostra esta ajuda\n"
+        "/status   estado atual da telemetria (sem IA)\n"
+        "/ciclo    gera uma nova leitura de telemetria\n"
+        "/normal   força um cenário de operação normal\n"
+        "/critico  força um cenário de crise (ótimo para a demonstração)\n"
+        "/about    sobre o projeto e a trilha\n"
+        "/clear    limpa a tela\n"
+        "/exit     encerra a sessão\n\n"
+        "Qualquer outra frase é enviada à IA para análise da missão.",
         title="◆ Comandos", border_style="#A855F7",
     ))
 
@@ -86,11 +96,21 @@ def run_cli(engine):
         if user_input == "/status":
             show_response(engine.status_snapshot())
             continue
+        if user_input == "/ciclo":
+            show_response(engine.novo_ciclo("aleatorio"))
+            continue
+        if user_input == "/normal":
+            show_response(engine.novo_ciclo("normal"))
+            continue
+        if user_input == "/critico":
+            show_response(engine.novo_ciclo("critico"))
+            continue
         if user_input == "/clear":
             console.clear()
             show_banner()
             continue
 
-        # Qualquer outra entrada vai para o motor de análise.
+        # Qualquer outra entrada vai para o motor de análise (IA).
+        console.print("Analisando a missão...", style="#8484A0")
         resposta = engine.analyze(user_input)
-        show_response(resposta)
+        show_response(resposta, markdown=True)
