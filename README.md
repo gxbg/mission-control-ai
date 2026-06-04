@@ -49,8 +49,12 @@ conhecimento de engenharia espacial.
 `/clear`, `/exit`. Qualquer outra frase é enviada à IA para análise da missão.
 
 ## 🖥️ Demonstração
-![Status normal da missão](assets/screenshot_normal.png)
-![Alerta crítico com análise da IA](assets/screenshot_alerta.png)
+
+![Status normal da missão]
+<img width="1879" height="329" alt="print_status" src="https://github.com/user-attachments/assets/54f09b2a-e3b4-4cc1-83aa-c6acf7dabf9e" />
+
+![Alerta crítico com análise da IA]
+<img width="1895" height="581" alt="print_alerta" src="https://github.com/user-attachments/assets/18a5eafc-479d-40fc-b1e7-200c50d97a65" />
 
 ## 🧠 System Prompt
 O system prompt completo está em [`prompts/system_prompt.md`](prompts/system_prompt.md).
